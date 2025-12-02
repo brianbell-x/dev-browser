@@ -3,6 +3,7 @@
 export interface ServeOptions {
   port?: number;
   headless?: boolean;
+  cdpPort?: number;
 }
 
 export interface GetPageRequest {

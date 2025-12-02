@@ -26,8 +26,8 @@ export async function connect(serverUrl: string): Promise<DevBrowserClient> {
     const info = (await res.json()) as ServerInfoResponse;
     wsEndpoint = info.wsEndpoint;
 
-    // Connect to the browser
-    browser = await chromium.connect(wsEndpoint);
+    // Connect to the browser via CDP
+    browser = await chromium.connectOverCDP(wsEndpoint);
     return browser;
   }
 

@@ -1,4 +1,4 @@
-import { chromium, type BrowserServer, type Browser, type BrowserContext } from "playwright";
+import { chromium, type Browser, type BrowserContext } from "playwright";
 import type {
   ServeOptions,
   GetPageRequest,
@@ -7,7 +7,12 @@ import type {
   ServerInfoResponse,
 } from "./types";
 
-export type { ServeOptions, GetPageResponse, ListPagesResponse, ServerInfoResponse };
+export type {
+  ServeOptions,
+  GetPageResponse,
+  ListPagesResponse,
+  ServerInfoResponse,
+};
 
 export interface DevBrowserServer {
   wsEndpoint: string;
@@ -15,18 +20,27 @@ export interface DevBrowserServer {
   stop: () => Promise<void>;
 }
 
-export async function serve(options: ServeOptions = {}): Promise<DevBrowserServer> {
+export async function serve(
+  options: ServeOptions = {}
+): Promise<DevBrowserServer> {
   const port = options.port ?? 9222;
   const headless = options.headless ?? false;
 
-  // Launch the browser server
-  const browserServer: BrowserServer = await chromium.launchServer({
-    headless,
-  });
-  const wsEndpoint = browserServer.wsEndpoint();
+  const cdpPort = options.cdpPort ?? 9223;
+  console.log("Launching browser...");
 
-  // Connect to the browser for creating pages
-  const browser: Browser = await chromium.connect(wsEndpoint);
+  // Launch browser with CDP remote debugging enabled
+  const browser: Browser = await chromium.launch({
+    headless,
+    args: [`--remote-debugging-port=${cdpPort}`],
+  });
+  console.log("Browser launched...");
+
+  // Get the CDP WebSocket endpoint from Chrome's JSON API
+  const cdpResponse = await fetch(`http://127.0.0.1:${cdpPort}/json/version`);
+  const cdpInfo = (await cdpResponse.json()) as { webSocketDebuggerUrl: string };
+  const wsEndpoint = cdpInfo.webSocketDebuggerUrl;
+  console.log(`CDP WebSocket endpoint: ${wsEndpoint}`);
 
   // Registry: name -> BrowserContext
   const registry = new Map<string, BrowserContext>();
@@ -104,9 +118,8 @@ export async function serve(options: ServeOptions = {}): Promise<DevBrowserServe
       }
       registry.clear();
 
-      // Close browser connection and server
+      // Close browser and HTTP server
       await browser.close();
-      await browserServer.close();
       server.stop();
     },
   };

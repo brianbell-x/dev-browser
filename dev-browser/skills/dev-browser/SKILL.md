@@ -9,10 +9,12 @@ A browser automation skill that maintains page state across script executions. W
 
 ## Setup
 
-First, start the dev-browser server in the background:
+First, install dependencies and start the dev-browser server:
+
+You should make sure to run it in the background
 
 ```bash
-cd plugins/dev-browser && bun run start-server &
+cd dev-browser && bun run start-server &
 ```
 
 The server runs on `http://localhost:9222` and keeps the browser alive between script runs.
@@ -26,7 +28,13 @@ The server runs on `http://localhost:9222` and keeps the browser alive between s
 
 ## Writing Scripts
 
-Write scripts to `/tmp/browser-script.ts` and run them with `bun run /tmp/browser-script.ts`.
+Write scripts to `dev-browser/tmp/` with unique names (e.g., `dev-browser/tmp/navigate-login.ts`, `dev-browser/tmp/fill-form.ts`) and run them with `bun run dev-browser/tmp/<script-name>.ts`.
+
+Make sure the tmp directory exists:
+
+```bash
+mkdir -p dev-browser/tmp
+```
 
 ### Basic Template
 
@@ -67,6 +75,7 @@ Follow this pattern for complex tasks:
 ### Example: Login Flow
 
 **Step 1: Navigate to login page**
+
 ```typescript
 import { connect } from "dev-browser/client";
 
@@ -76,11 +85,12 @@ const page = await client.page("auth");
 await page.goto("https://example.com/login");
 
 // Check state
-const hasLoginForm = await page.$("form#login") !== null;
+const hasLoginForm = (await page.$("form#login")) !== null;
 console.log({ url: page.url(), hasLoginForm });
 ```
 
 **Step 2: Fill credentials** (after confirming login form exists)
+
 ```typescript
 import { connect } from "dev-browser/client";
 
@@ -99,6 +109,7 @@ console.log({ url, isLoggedIn });
 ```
 
 **Step 3: Verify success** (if needed)
+
 ```typescript
 import { connect } from "dev-browser/client";
 
@@ -106,13 +117,14 @@ const client = await connect("http://localhost:9222");
 const page = await client.page("auth");
 
 const welcomeText = await page.textContent("h1");
-const userMenu = await page.$(".user-menu") !== null;
+const userMenu = (await page.$(".user-menu")) !== null;
 console.log({ welcomeText, userMenu, success: userMenu });
 ```
 
 ## Common Operations
 
 ### Navigation
+
 ```typescript
 await page.goto("https://example.com");
 await page.goBack();
@@ -120,6 +132,7 @@ await page.reload();
 ```
 
 ### Clicking
+
 ```typescript
 await page.click("button.submit");
 await page.click('a:has-text("Sign Up")');
@@ -127,6 +140,7 @@ await page.click("nav >> text=Products");
 ```
 
 ### Form Filling
+
 ```typescript
 await page.fill('input[name="email"]', "test@example.com");
 await page.selectOption("select#country", "US");
@@ -134,6 +148,7 @@ await page.check('input[type="checkbox"]');
 ```
 
 ### Waiting
+
 ```typescript
 await page.waitForSelector(".results");
 await page.waitForLoadState("networkidle");
@@ -142,20 +157,25 @@ await page.waitForTimeout(1000); // avoid if possible
 ```
 
 ### Extracting Data
+
 ```typescript
 const text = await page.textContent(".message");
 const html = await page.innerHTML(".container");
 const value = await page.inputValue("input#search");
-const items = await page.$$eval(".item", els => els.map(e => e.textContent));
+const items = await page.$$eval(".item", (els) =>
+  els.map((e) => e.textContent)
+);
 ```
 
 ### Screenshots
+
 ```typescript
-await page.screenshot({ path: "/tmp/screenshot.png" });
-await page.screenshot({ path: "/tmp/full.png", fullPage: true });
+await page.screenshot({ path: "dev-browser/tmp/screenshot.png" });
+await page.screenshot({ path: "dev-browser/tmp/full.png", fullPage: true });
 ```
 
 ### Evaluating JavaScript
+
 ```typescript
 const result = await page.evaluate(() => {
   return document.querySelectorAll(".item").length;
@@ -183,21 +203,22 @@ await client.close("checkout");
 ## Error Recovery
 
 If a script fails, the page state is preserved. You can:
+
 1. Take a screenshot to see what happened
 2. Check the current URL and DOM state
 3. Write a recovery script to get back on track
 
 ```typescript
-// Recovery script - check current state
+// Recovery script - check current state (save as dev-browser/tmp/debug-state.ts)
 import { connect } from "dev-browser/client";
 
 const client = await connect("http://localhost:9222");
 const page = await client.page("main");
 
-await page.screenshot({ path: "/tmp/debug.png" });
+await page.screenshot({ path: "dev-browser/tmp/debug.png" });
 console.log({
   url: page.url(),
   title: await page.title(),
-  bodyText: await page.textContent("body").then(t => t?.slice(0, 200))
+  bodyText: await page.textContent("body").then((t) => t?.slice(0, 200)),
 });
 ```
