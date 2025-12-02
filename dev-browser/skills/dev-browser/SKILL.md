@@ -32,11 +32,7 @@ The server starts a Chromium browser with a REST API for page management (defaul
 
 Write scripts to `tmp/` with unique names (e.g., `navigate-login.ts`, `fill-form.ts`) and run them with `bun x tsx tmp/<script-name>.ts`.
 
-Make sure the tmp directory exists:
-
-```bash
-mkdir -p tmp
-```
+The `tmp/` directory is created automatically when you start the server.
 
 ### Basic Template
 

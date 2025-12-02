@@ -109,40 +109,94 @@ export async function serve(
     console.log(`HTTP API server running on port ${port}`);
   });
 
+  // Track if cleanup has been called to avoid double cleanup
+  let cleaningUp = false;
+
   // Cleanup function
   const cleanup = async () => {
+    if (cleaningUp) return;
+    cleaningUp = true;
+
     console.log("\nShutting down...");
     // Close all contexts
     for (const context of registry.values()) {
-      await context.close();
+      try {
+        await context.close();
+      } catch {
+        // Context might already be closed
+      }
     }
     registry.clear();
     // Close browser and HTTP server
-    await browser.close();
+    try {
+      await browser.close();
+    } catch {
+      // Browser might already be closed
+    }
     server.close();
     console.log("Server stopped.");
+  };
+
+  // Synchronous cleanup for forced exits - kills browser process directly
+  const syncCleanup = () => {
+    if (browser.isConnected()) {
+      try {
+        // Force kill the browser process
+        browser.close();
+      } catch {
+        // Best effort
+      }
+    }
+  };
+
+  // Signal handlers
+  const sigintHandler = async () => {
+    await cleanup();
     process.exit(0);
+  };
+  const sigtermHandler = async () => {
+    await cleanup();
+    process.exit(0);
+  };
+  const sighupHandler = async () => {
+    await cleanup();
+    process.exit(0);
+  };
+  const uncaughtHandler = async (err: Error) => {
+    console.error("Uncaught exception:", err);
+    await cleanup();
+    process.exit(1);
+  };
+  const rejectionHandler = async (reason: unknown) => {
+    console.error("Unhandled rejection:", reason);
+    await cleanup();
+    process.exit(1);
   };
 
   // Register signal handlers
-  process.on("SIGINT", cleanup);
-  process.on("SIGTERM", cleanup);
-  process.on("SIGHUP", cleanup);
+  process.on("SIGINT", sigintHandler);
+  process.on("SIGTERM", sigtermHandler);
+  process.on("SIGHUP", sighupHandler);
+  process.on("uncaughtException", uncaughtHandler);
+  process.on("unhandledRejection", rejectionHandler);
+  process.on("exit", syncCleanup);
+
+  // Helper to remove all handlers
+  const removeHandlers = () => {
+    process.off("SIGINT", sigintHandler);
+    process.off("SIGTERM", sigtermHandler);
+    process.off("SIGHUP", sighupHandler);
+    process.off("uncaughtException", uncaughtHandler);
+    process.off("unhandledRejection", rejectionHandler);
+    process.off("exit", syncCleanup);
+  };
 
   return {
     wsEndpoint,
     port,
     async stop() {
-      process.off("SIGINT", cleanup);
-      process.off("SIGTERM", cleanup);
-      process.off("SIGHUP", cleanup);
-      // Close all contexts
-      for (const context of registry.values()) {
-        await context.close();
-      }
-      registry.clear();
-      await browser.close();
-      server.close();
+      removeHandlers();
+      await cleanup();
     },
   };
 }
