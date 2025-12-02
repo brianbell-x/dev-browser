@@ -1,4 +1,9 @@
-import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
+import { chromium, type Browser, type Page } from "playwright";
+import type {
+  GetPageRequest,
+  ListPagesResponse,
+  ServerInfoResponse,
+} from "./types";
 
 export interface DevBrowserClient {
   page: (name: string) => Promise<Page>;
@@ -7,39 +12,36 @@ export interface DevBrowserClient {
   disconnect: () => Promise<void>;
 }
 
-export async function connect(wsEndpoint: string): Promise<DevBrowserClient> {
-  // Connect directly to the browser server
-  const browser: Browser = await chromium.connect(wsEndpoint);
+export async function connect(serverUrl: string): Promise<DevBrowserClient> {
+  let browser: Browser | null = null;
+  let wsEndpoint: string | null = null;
 
-  // Local registry: name -> BrowserContext
-  const registry = new Map<string, BrowserContext>();
-
-  // Find existing pages from browser (in case of reconnection)
-  for (const context of browser.contexts()) {
-    for (const page of context.pages()) {
-      try {
-        const pageName = await page.evaluate(() => (globalThis as any).__devBrowserPageName);
-        if (pageName && typeof pageName === "string") {
-          registry.set(pageName, context);
-        }
-      } catch {
-        // Page might be closed or navigating
-      }
+  async function ensureConnected(): Promise<Browser> {
+    if (browser && browser.isConnected()) {
+      return browser;
     }
+
+    // Fetch wsEndpoint from server
+    const res = await fetch(serverUrl);
+    const info = (await res.json()) as ServerInfoResponse;
+    wsEndpoint = info.wsEndpoint;
+
+    // Connect to the browser via CDP
+    browser = await chromium.connectOverCDP(wsEndpoint);
+    return browser;
   }
 
-  async function findPage(name: string): Promise<Page | null> {
-    const context = registry.get(name);
-    if (!context) return null;
-
-    for (const page of context.pages()) {
-      try {
-        const pageName = await page.evaluate(() => (globalThis as any).__devBrowserPageName);
-        if (pageName === name) {
-          return page;
+  async function findPage(b: Browser, name: string): Promise<Page | null> {
+    for (const context of b.contexts()) {
+      for (const page of context.pages()) {
+        try {
+          const pageName = await page.evaluate(() => (globalThis as any).__devBrowserPageName);
+          if (pageName === name) {
+            return page;
+          }
+        } catch {
+          // Page might be closed or navigating
         }
-      } catch {
-        // Page might be closed or navigating
       }
     }
     return null;
@@ -47,38 +49,53 @@ export async function connect(wsEndpoint: string): Promise<DevBrowserClient> {
 
   return {
     async page(name: string): Promise<Page> {
-      // Check if page already exists
-      const existing = await findPage(name);
-      if (existing) {
-        return existing;
+      // Request the page from server (creates if doesn't exist)
+      const res = await fetch(`${serverUrl}/pages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name } satisfies GetPageRequest),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to get page: ${await res.text()}`);
       }
 
-      // Create new context with init script
-      const context = await browser.newContext();
-      await context.addInitScript((pageName: string) => {
-        (globalThis as any).__devBrowserPageName = pageName;
-      }, name);
-      const page = await context.newPage();
-      registry.set(name, context);
+      await res.json(); // consume response
+
+      // Connect to browser
+      const b = await ensureConnected();
+
+      // Find the page
+      const page = await findPage(b, name);
+      if (!page) {
+        throw new Error(`Page "${name}" not found in browser contexts`);
+      }
 
       return page;
     },
 
     async list(): Promise<string[]> {
-      return Array.from(registry.keys());
+      const res = await fetch(`${serverUrl}/pages`);
+      const data = (await res.json()) as ListPagesResponse;
+      return data.pages;
     },
 
     async close(name: string): Promise<void> {
-      const context = registry.get(name);
-      if (context) {
-        await context.close();
-        registry.delete(name);
+      const res = await fetch(`${serverUrl}/pages/${encodeURIComponent(name)}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to close page: ${await res.text()}`);
       }
     },
 
     async disconnect(): Promise<void> {
-      // Just disconnect - don't close the browser server
-      browser.close();
+      // Just disconnect the CDP connection - pages persist on server
+      if (browser) {
+        await browser.close();
+        browser = null;
+      }
     },
   };
 }

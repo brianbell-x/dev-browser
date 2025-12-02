@@ -12,9 +12,11 @@
     "start": "bun x tsx src/index.ts"
   },
   "dependencies": {
+    "express": "^4.21.0",
     "playwright": "^1.49.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "tsx": "^4.21.0",
     "tsup": "^8.0.0"
   }

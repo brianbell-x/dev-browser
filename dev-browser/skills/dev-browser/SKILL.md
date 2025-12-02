@@ -19,13 +19,13 @@ cd dev-browser && bun run start-server &
 
 **Important:** Scripts must be run with `bun x tsx` (not `bun run`) due to Playwright WebSocket compatibility:
 
-The server starts a Chromium browser and exposes a WebSocket endpoint (default: `ws://127.0.0.1:9222/...`). Clients connect directly to this endpoint.
+The server starts a Chromium browser with a REST API for page management (default: `http://localhost:9222`).
 
 ## How It Works
 
-1. **Server** launches a persistent Chromium browser server
-2. **Client** connects directly via WebSocket and manages named pages locally
-3. **Pages persist** - you can run multiple scripts against the same page
+1. **Server** launches a persistent Chromium browser and manages named pages via REST API
+2. **Client** connects to the HTTP server URL and requests pages by name
+3. **Pages persist** - the server owns all page contexts, so they survive client disconnections
 4. **State is preserved** - cookies, localStorage, DOM state all persist between runs
 
 ## Writing Scripts
@@ -45,7 +45,7 @@ Always use the package name `dev-browser/client`.
 ```typescript
 import { connect } from "dev-browser/client";
 
-const client = await connect("ws://127.0.0.1:9222/<guid>");
+const client = await connect("http://localhost:9222");
 const page = await client.page("main"); // get or create a named page
 
 // Your automation code here
@@ -56,17 +56,16 @@ const title = await page.title();
 const url = page.url();
 console.log({ title, url });
 
-// Don't close - keep page alive for next script
+// Disconnect so the script exits (page stays alive on the server)
+await client.disconnect();
 ```
-
-**Note:** The WebSocket URL is printed when the server starts. Use the full URL from the server output.
 
 ### Key Principles
 
 1. **Small scripts**: Each script should do ONE thing (navigate, click, fill, check)
 2. **Evaluate state**: Always log/return state at the end to decide next steps
 3. **Use page names**: Use descriptive names like `"checkout"`, `"login"`, `"search-results"`
-4. **Don't close**: Never call `client.disconnect()` or `page.close()` unless done
+4. **Disconnect to exit**: Call `await client.disconnect()` at the end of your script so the process exits cleanly. Pages persist on the server.
 
 ## Workflow Loop
 
@@ -85,7 +84,7 @@ Follow this pattern for complex tasks:
 ```typescript
 import { connect } from "dev-browser/client";
 
-const client = await connect("ws://127.0.0.1:9222/<guid>");
+const client = await connect("http://localhost:9222");
 const page = await client.page("auth");
 
 await page.goto("https://example.com/login");
@@ -93,6 +92,8 @@ await page.goto("https://example.com/login");
 // Check state
 const hasLoginForm = (await page.$("form#login")) !== null;
 console.log({ url: page.url(), hasLoginForm });
+
+await client.disconnect();
 ```
 
 **Step 2: Fill credentials** (after confirming login form exists)
@@ -100,7 +101,7 @@ console.log({ url: page.url(), hasLoginForm });
 ```typescript
 import { connect } from "dev-browser/client";
 
-const client = await connect("ws://127.0.0.1:9222/<guid>");
+const client = await connect("http://localhost:9222");
 const page = await client.page("auth");
 
 await page.fill('input[name="email"]', "user@example.com");
@@ -112,6 +113,8 @@ await page.waitForLoadState("networkidle");
 const url = page.url();
 const isLoggedIn = url.includes("/dashboard");
 console.log({ url, isLoggedIn });
+
+await client.disconnect();
 ```
 
 **Step 3: Verify success** (if needed)
@@ -119,12 +122,14 @@ console.log({ url, isLoggedIn });
 ```typescript
 import { connect } from "dev-browser/client";
 
-const client = await connect("ws://127.0.0.1:9222/<guid>");
+const client = await connect("http://localhost:9222");
 const page = await client.page("auth");
 
 const welcomeText = await page.textContent("h1");
 const userMenu = (await page.$(".user-menu")) !== null;
 console.log({ welcomeText, userMenu, success: userMenu });
+
+await client.disconnect();
 ```
 
 ## Common Operations
@@ -191,7 +196,7 @@ const result = await page.evaluate(() => {
 ## Managing Pages
 
 ```typescript
-// List all pages (local to this client connection)
+// List all pages managed by the server
 const pages = await client.list();
 console.log(pages); // ["main", "auth", "checkout"]
 
@@ -219,7 +224,7 @@ If a script fails, the page state is preserved. You can:
 // Save as dev-browser/tmp/debug-state.ts and run with: bun x tsx tmp/debug-state.ts
 import { connect } from "dev-browser/client";
 
-const client = await connect("ws://127.0.0.1:9222/<guid>");
+const client = await connect("http://localhost:9222");
 const page = await client.page("main");
 
 await page.screenshot({ path: "tmp/debug.png" });
@@ -228,4 +233,6 @@ console.log({
   title: await page.title(),
   bodyText: await page.textContent("body").then((t) => t?.slice(0, 200)),
 });
+
+await client.disconnect();
 ```
