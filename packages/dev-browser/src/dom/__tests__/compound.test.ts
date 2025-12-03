@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { chromium, Browser, Page } from "playwright";
+import { chromium } from "playwright";
+import type { Browser, Page } from "playwright";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { extractRawDOM } from "../extract.js";
@@ -51,8 +52,8 @@ describe("getCompoundComponents - select", () => {
     const compounds = getCompoundComponents(select!);
 
     expect(compounds.length).toBe(1);
-    expect(compounds[0].name).toBe("Dropdown Toggle");
-    expect(compounds[0].role).toBe("combobox");
+    expect(compounds[0]!.name).toBe("Dropdown Toggle");
+    expect(compounds[0]!.role).toBe("combobox");
   });
 
   test("shows first 4 options + count", async () => {
@@ -60,8 +61,8 @@ describe("getCompoundComponents - select", () => {
     const select = findNodeByAttribute(tree, "id", "many-options-select");
     const compounds = getCompoundComponents(select!);
 
-    expect(compounds[0].options!.length).toBe(5); // 4 + "... +N more"
-    expect(compounds[0].options![4]).toContain("+6 more");
+    expect(compounds[0]!.options!.length).toBe(5); // 4 + "... +N more"
+    expect(compounds[0]!.options![4]).toContain("+6 more");
   });
 
   test("shows current selected option", async () => {
@@ -75,7 +76,7 @@ describe("getCompoundComponents - select", () => {
     const select = findNodeByAttribute(tree, "id", "test-select");
     const compounds = getCompoundComponents(select!);
 
-    expect(compounds[0].current).toBe("Option B");
+    expect(compounds[0]!.current).toBe("Option B");
   });
 
   test("defaults to first option when none selected", async () => {
@@ -89,7 +90,7 @@ describe("getCompoundComponents - select", () => {
     const select = findNodeByAttribute(tree, "id", "test-select");
     const compounds = getCompoundComponents(select!);
 
-    expect(compounds[0].current).toBe("First Option");
+    expect(compounds[0]!.current).toBe("First Option");
   });
 
   test("handles empty select", async () => {
@@ -97,8 +98,8 @@ describe("getCompoundComponents - select", () => {
     const select = findNodeByAttribute(tree, "id", "empty-select");
     const compounds = getCompoundComponents(select!);
 
-    expect(compounds[0].options!.length).toBe(0);
-    expect(compounds[0].current).toBeUndefined();
+    expect(compounds[0]!.options!.length).toBe(0);
+    expect(compounds[0]!.current).toBeUndefined();
   });
 });
 
@@ -110,10 +111,10 @@ describe("getCompoundComponents - file input", () => {
     const compounds = getCompoundComponents(input!);
 
     expect(compounds.length).toBe(2);
-    expect(compounds[0].name).toBe("Browse Files");
-    expect(compounds[0].role).toBe("button");
-    expect(compounds[1].name).toBe("File Selected");
-    expect(compounds[1].role).toBe("textbox");
+    expect(compounds[0]!.name).toBe("Browse Files");
+    expect(compounds[0]!.role).toBe("button");
+    expect(compounds[1]!.name).toBe("File Selected");
+    expect(compounds[1]!.role).toBe("textbox");
   });
 
   test("shows accept types in format", async () => {
@@ -121,7 +122,7 @@ describe("getCompoundComponents - file input", () => {
     const input = findNodeByAttribute(tree, "id", "file-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[1].format).toContain(".pdf");
+    expect(compounds[1]!.format).toContain(".pdf");
   });
 
   test("handles multiple file input", async () => {
@@ -129,7 +130,7 @@ describe("getCompoundComponents - file input", () => {
     const input = findNodeByAttribute(tree, "id", "multi-file-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[1].name).toBe("Files Selected");
+    expect(compounds[1]!.name).toBe("Files Selected");
   });
 });
 
@@ -140,11 +141,11 @@ describe("getCompoundComponents - range input", () => {
     const compounds = getCompoundComponents(input!);
 
     expect(compounds.length).toBe(1);
-    expect(compounds[0].name).toBe("Slider");
-    expect(compounds[0].role).toBe("slider");
-    expect(compounds[0].min).toBe(0);
-    expect(compounds[0].max).toBe(100);
-    expect(compounds[0].current).toBe("50");
+    expect(compounds[0]!.name).toBe("Slider");
+    expect(compounds[0]!.role).toBe("slider");
+    expect(compounds[0]!.min).toBe(0);
+    expect(compounds[0]!.max).toBe(100);
+    expect(compounds[0]!.current).toBe("50");
   });
 
   test("includes step in format when specified", async () => {
@@ -152,7 +153,7 @@ describe("getCompoundComponents - range input", () => {
     const input = findNodeByAttribute(tree, "id", "rating-slider");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[0].format).toContain("Step: 1");
+    expect(compounds[0]!.format).toContain("Step: 1");
   });
 });
 
@@ -163,9 +164,9 @@ describe("getCompoundComponents - number input", () => {
     const compounds = getCompoundComponents(input!);
 
     expect(compounds.length).toBe(3);
-    expect(compounds[0].name).toBe("Decrement");
-    expect(compounds[1].name).toBe("Value");
-    expect(compounds[2].name).toBe("Increment");
+    expect(compounds[0]!.name).toBe("Decrement");
+    expect(compounds[1]!.name).toBe("Value");
+    expect(compounds[2]!.name).toBe("Increment");
   });
 
   test("includes min/max on Value component", async () => {
@@ -173,9 +174,9 @@ describe("getCompoundComponents - number input", () => {
     const input = findNodeByAttribute(tree, "id", "quantity-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[1].min).toBe(1);
-    expect(compounds[1].max).toBe(99);
-    expect(compounds[1].current).toBe("1");
+    expect(compounds[1]!.min).toBe(1);
+    expect(compounds[1]!.max).toBe(99);
+    expect(compounds[1]!.current).toBe("1");
   });
 
   test("handles unbounded number input", async () => {
@@ -183,8 +184,8 @@ describe("getCompoundComponents - number input", () => {
     const input = findNodeByAttribute(tree, "id", "unbounded-number");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[1].min).toBeUndefined();
-    expect(compounds[1].max).toBeUndefined();
+    expect(compounds[1]!.min).toBeUndefined();
+    expect(compounds[1]!.max).toBeUndefined();
   });
 });
 
@@ -194,8 +195,8 @@ describe("getCompoundComponents - date/time inputs", () => {
     const input = findNodeByAttribute(tree, "id", "date-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[0].name).toBe("Date Picker");
-    expect(compounds[0].format).toBe("YYYY-MM-DD");
+    expect(compounds[0]!.name).toBe("Date Picker");
+    expect(compounds[0]!.format).toBe("YYYY-MM-DD");
   });
 
   test("time input shows format", async () => {
@@ -203,7 +204,7 @@ describe("getCompoundComponents - date/time inputs", () => {
     const input = findNodeByAttribute(tree, "id", "time-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[0].format).toBe("HH:MM");
+    expect(compounds[0]!.format).toBe("HH:MM");
   });
 
   test("datetime-local input shows format", async () => {
@@ -211,7 +212,7 @@ describe("getCompoundComponents - date/time inputs", () => {
     const input = findNodeByAttribute(tree, "id", "datetime-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[0].format).toBe("YYYY-MM-DDTHH:MM");
+    expect(compounds[0]!.format).toBe("YYYY-MM-DDTHH:MM");
   });
 });
 
@@ -221,9 +222,9 @@ describe("getCompoundComponents - color input", () => {
     const input = findNodeByAttribute(tree, "id", "color-input");
     const compounds = getCompoundComponents(input!);
 
-    expect(compounds[0].name).toBe("Color Picker");
-    expect(compounds[0].current).toBe("#ff0000");
-    expect(compounds[0].format).toBe("Hex color");
+    expect(compounds[0]!.name).toBe("Color Picker");
+    expect(compounds[0]!.current).toBe("#ff0000");
+    expect(compounds[0]!.format).toBe("Hex color");
   });
 });
 
@@ -273,9 +274,9 @@ describe("getCompoundComponents - details", () => {
     const compounds = getCompoundComponents(details!);
 
     expect(compounds.length).toBe(1);
-    expect(compounds[0].name).toBe("Toggle");
-    expect(compounds[0].role).toBe("button");
-    expect(compounds[0].current).toBe("collapsed");
+    expect(compounds[0]!.name).toBe("Toggle");
+    expect(compounds[0]!.role).toBe("button");
+    expect(compounds[0]!.current).toBe("collapsed");
   });
 
   test("shows expanded state", async () => {
@@ -285,7 +286,7 @@ describe("getCompoundComponents - details", () => {
     const details = findNodeByAttribute(tree, "id", "open-details");
     const compounds = getCompoundComponents(details!);
 
-    expect(compounds[0].current).toBe("expanded");
+    expect(compounds[0]!.current).toBe("expanded");
   });
 });
 

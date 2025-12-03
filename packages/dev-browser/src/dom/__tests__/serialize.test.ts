@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { chromium, Browser, Page } from "playwright";
+import { chromium } from "playwright";
+import type { Browser, Page } from "playwright";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { extractRawDOM } from "../extract.js";
@@ -75,7 +76,7 @@ describe("buildSelector", () => {
     expect(buttons.length).toBe(2);
 
     // Second button should use nth-of-type
-    const selector = buildSelector(buttons[1], [tree, findNodeByTagName(tree, "div")!]);
+    const selector = buildSelector(buttons[1]!, [tree, findNodeByTagName(tree, "div")!]);
     expect(selector).toContain("button:nth-of-type(2)");
   });
 
@@ -165,7 +166,8 @@ describe("getScrollInfo", () => {
 
     // Scroll to middle
     await page.evaluate(() => {
-      const container = document.getElementById("scroll-container");
+      const doc = (globalThis as { document?: any }).document!;
+      const container = doc.getElementById("scroll-container");
       if (container) container.scrollTop = 100;
     });
 
@@ -255,7 +257,8 @@ describe("serializeTree", () => {
 		`);
 
     await page.waitForFunction(() => {
-      const host = document.getElementById("shadow-host");
+      const doc = (globalThis as { document?: any }).document!;
+      const host = doc.getElementById("shadow-host");
       return host?.shadowRoot?.querySelector("button");
     });
 

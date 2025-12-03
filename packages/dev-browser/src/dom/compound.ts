@@ -100,7 +100,7 @@ function getSelectedOptionText(selectNode: RawDOMNode, options: RawDOMNode[]): s
 
   // Default to first option
   if (options.length > 0) {
-    return options[0].textContent || options[0].attributes.value;
+    return options[0]!.textContent || options[0]!.attributes.value;
   }
 
   return undefined;

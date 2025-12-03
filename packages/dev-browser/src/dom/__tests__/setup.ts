@@ -1,4 +1,5 @@
-import { chromium, Browser, BrowserContext, Page } from "playwright";
+import { chromium } from "playwright";
+import type { Browser, BrowserContext, Page } from "playwright";
 import { beforeAll, afterAll, beforeEach, afterEach } from "vitest";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";

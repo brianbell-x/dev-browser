@@ -7,6 +7,31 @@ import type { Page, Frame } from "playwright";
 import type { RawDOMNode, ComputedStyles, BoundingRect } from "./types.js";
 import { EXCLUDED_TAGS } from "./types.js";
 
+// Browser globals used in page.evaluate() - declared here since DOM lib is not included
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type BrowserElement = any;
+type BrowserNode = any;
+type BrowserShadowRoot = any;
+type BrowserHTMLIFrameElement = any;
+
+declare const document: {
+  body: BrowserElement;
+  documentElement: BrowserElement;
+  getElementById(id: string): BrowserElement | null;
+};
+declare const window: {
+  getComputedStyle(element: BrowserElement): any;
+  scrollX: number;
+  scrollY: number;
+  innerWidth: number;
+  innerHeight: number;
+};
+declare const Node: {
+  TEXT_NODE: number;
+  ELEMENT_NODE: number;
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 /**
  * Extract the raw DOM tree from a Playwright page
  */
@@ -39,9 +64,9 @@ async function processFrames(pageOrFrame: Page | Frame, node: RawDOMNode): Promi
   if (node.isFrame && node.frameUrl && node.frameUrl !== "about:blank") {
     try {
       // Find the frame by URL or try to locate it
-      const frames =
-        "frames" in pageOrFrame ? pageOrFrame.frames() : (pageOrFrame as Page).frames();
-      const frame = frames.find((f) => {
+      // Page has frames(), Frame has childFrames()
+      const frames = "frames" in pageOrFrame ? pageOrFrame.frames() : pageOrFrame.childFrames();
+      const frame = frames.find((f: Frame) => {
         try {
           return f.url() === node.frameUrl || f.url().includes(node.frameUrl || "");
         } catch {
@@ -85,7 +110,7 @@ function extractDOMScript(): RawDOMNode | null {
     "title",
   ]);
 
-  function getComputedStyles(element: Element): ComputedStyles {
+  function getComputedStyles(element: BrowserElement): ComputedStyles {
     const styles = window.getComputedStyle(element);
     return {
       display: styles.display,
@@ -100,7 +125,7 @@ function extractDOMScript(): RawDOMNode | null {
     };
   }
 
-  function getBoundingRect(element: Element): BoundingRect {
+  function getBoundingRect(element: BrowserElement): BoundingRect {
     const rect = element.getBoundingClientRect();
     return {
       x: rect.x + window.scrollX,
@@ -110,7 +135,7 @@ function extractDOMScript(): RawDOMNode | null {
     };
   }
 
-  function getAttributes(element: Element): Record<string, string> {
+  function getAttributes(element: BrowserElement): Record<string, string> {
     const attrs: Record<string, string> = {};
     for (const attr of element.attributes) {
       attrs[attr.name] = attr.value;
@@ -118,7 +143,7 @@ function extractDOMScript(): RawDOMNode | null {
     return attrs;
   }
 
-  function isScrollable(element: Element): boolean {
+  function isScrollable(element: BrowserElement): boolean {
     const styles = window.getComputedStyle(element);
     const overflowY = styles.overflowY;
     const overflowX = styles.overflowX;
@@ -133,7 +158,7 @@ function extractDOMScript(): RawDOMNode | null {
     return canScrollY || canScrollX;
   }
 
-  function getTextContent(node: Node): string {
+  function getTextContent(node: BrowserNode): string {
     if (node.nodeType === Node.TEXT_NODE) {
       return (node.textContent || "").trim();
     }
@@ -148,7 +173,7 @@ function extractDOMScript(): RawDOMNode | null {
     return text.trim();
   }
 
-  function extractNode(node: Node, depth: number = 0): RawDOMNode | null {
+  function extractNode(node: BrowserNode, depth: number = 0): RawDOMNode | null {
     // Handle text nodes
     if (node.nodeType === Node.TEXT_NODE) {
       const text = (node.textContent || "").trim();
@@ -200,7 +225,7 @@ function extractDOMScript(): RawDOMNode | null {
       return null;
     }
 
-    const element = node as Element;
+    const element = node as BrowserElement;
     const tagName = element.tagName.toLowerCase();
 
     // Skip excluded tags
@@ -256,7 +281,7 @@ function extractDOMScript(): RawDOMNode | null {
       shadowMode,
       contentDocument: null, // Will be filled in by processFrames
       isFrame,
-      frameUrl: isFrame ? (element as HTMLIFrameElement).src : undefined,
+      frameUrl: isFrame ? (element as BrowserHTMLIFrameElement).src : undefined,
     };
 
     // Add viewport dimensions to root
@@ -269,7 +294,7 @@ function extractDOMScript(): RawDOMNode | null {
   }
 
   function extractShadowRoot(
-    shadowRoot: ShadowRoot,
+    shadowRoot: BrowserShadowRoot,
     mode: "open" | "closed",
     depth: number
   ): RawDOMNode | null {

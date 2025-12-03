@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "vitest";
-import { chromium, Browser, Page } from "playwright";
+import { chromium } from "playwright";
+import type { Browser, Page } from "playwright";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { getLLMTree, extractDOMTree, processTree, serializeDOMTree } from "../index.js";
@@ -148,10 +149,11 @@ describe("getLLMTree", () => {
 
     // Add new button
     await page.evaluate(() => {
-      const btn = document.createElement("button");
+      const doc = (globalThis as { document?: any }).document!;
+      const btn = doc.createElement("button");
       btn.id = "new-btn";
       btn.textContent = "New Button";
-      document.body.appendChild(btn);
+      doc.body.appendChild(btn);
     });
 
     // Get tree again with previous state
@@ -174,7 +176,8 @@ describe("getLLMTree", () => {
 
     // Create shadow DOM using page.evaluate
     await page.evaluate(() => {
-      const host = document.getElementById("shadow-host");
+      const doc = (globalThis as { document?: any }).document!;
+      const host = doc.getElementById("shadow-host");
       if (host) {
         const shadow = host.attachShadow({ mode: "open" });
         shadow.innerHTML = '<button id="shadow-btn">Shadow Button</button>';
