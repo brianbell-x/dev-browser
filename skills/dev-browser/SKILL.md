@@ -17,7 +17,11 @@ Browser automation that maintains page state across script executions. Write sma
 
 ## Setup
 
-First, start the dev-browser server using the startup script:
+There are two modes for running dev-browser:
+
+### Mode 1: Launch Mode (Default)
+
+Launches a new Chromium browser. Use this for fresh automation sessions.
 
 ```bash
 ./skills/dev-browser/server.sh &
@@ -25,9 +29,7 @@ First, start the dev-browser server using the startup script:
 
 The script will automatically install dependencies and start the server. It will also install Chromium on first run if needed.
 
-### Flags
-
-The server script accepts the following flags:
+#### Flags
 
 - `--headless` - Start the browser in headless mode (no visible browser window). Use if the user asks for it.
 
@@ -38,11 +40,64 @@ The server script accepts the following flags:
 - Create the `tmp/` directory for scripts
 - Create the `profiles/` directory for browser data persistence
 
-The first run may take longer while dependencies are installed. Subsequent runs will start faster.
+### Mode 2: Extension Mode
+
+Connects to the user's existing Chrome browser via a Chrome extension. Use this when:
+
+- The user is already logged into sites and wants to automate their current session
+- The user wants to work alongside the automation (can see and help with captchas, etc.)
+- You need to automate tabs the user has already opened
+
+#### Starting Extension Mode
+
+1. **Start the relay server:**
+
+   ```bash
+   cd skills/dev-browser && npm run start-extension &
+   ```
+
+   Wait for `Waiting for extension to connect...`
+
+2. **Build and load the extension** (first time only):
+
+   ```bash
+   cd skills/dev-browser/extension && npm install && npm run build
+   ```
+
+   Then in Chrome: Extensions > Enable Developer Mode > Load Unpacked > Select `.output/chrome-mv3`
+
+3. **Attach to tabs:** Click the extension icon on any tab you want to automate. The icon turns green when connected.
+
+4. **Assign names to tabs:** When you call `client.page("name")`, it assigns that name to the first unnamed attached tab.
+
+#### Extension Mode Client API
+
+```typescript
+const client = await connect();
+
+// Check server mode
+const info = await client.getServerInfo();
+console.log(info.mode); // "extension" or "launch"
+console.log(info.extensionConnected); // true if extension is connected
+
+// List unnamed tabs (tabs attached via extension but not yet named)
+const unnamed = await client.listUnnamed();
+// Returns: [{ sessionId, targetId, title, url }]
+
+// Assign a name to the first unnamed tab
+const page = await client.page("my-tab");
+```
+
+#### Extension Mode Workflow
+
+1. User opens Chrome and navigates to sites they want to automate
+2. User clicks extension icon on each tab to attach
+3. Scripts call `client.page("name")` to assign names and get page handles
+4. Automation runs on the user's actual browser session
 
 **Important:** Scripts must be run with `npx tsx` (not `npm run`) due to Playwright WebSocket compatibility.
 
-The server starts a Chromium browser with a REST API for page management (default: `http://localhost:9222`).
+The server starts with a REST API for page management (default: `http://localhost:9222`).
 
 ## How It Works
 
@@ -158,6 +213,10 @@ await client.disconnect(); // Disconnect (pages persist)
 // ARIA Snapshot methods for element discovery and interaction
 const snapshot = await client.getAISnapshot("name"); // Get ARIA accessibility tree
 const element = await client.selectSnapshotRef("name", "e5"); // Get element by ref
+
+// Server info (extension mode)
+const info = await client.getServerInfo(); // { mode, wsEndpoint, extensionConnected }
+const unnamed = await client.listUnnamed(); // List tabs attached but not named
 ```
 
 The `page` object is a standard Playwright Page—use normal Playwright methods.

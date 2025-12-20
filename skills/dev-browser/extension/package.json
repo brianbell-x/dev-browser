@@ -1,0 +1,17 @@
+{
+  "name": "dev-browser-extension",
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "dev:firefox": "wxt --browser firefox",
+    "build": "wxt build",
+    "build:firefox": "wxt build --browser firefox",
+    "zip": "wxt zip",
+    "zip:firefox": "wxt zip --browser firefox"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "wxt": "^0.20.0"
+  }
+}

@@ -206,6 +206,21 @@ async function getPageLoadState(page: Page): Promise<PageLoadState> {
   return result;
 }
 
+/** Information about an unnamed tab (extension mode only) */
+export interface UnnamedTab {
+  sessionId: string;
+  targetId: string;
+  title: string;
+  url: string;
+}
+
+/** Server mode information */
+export interface ServerInfo {
+  wsEndpoint: string;
+  mode: "launch" | "extension";
+  extensionConnected?: boolean;
+}
+
 export interface DevBrowserClient {
   page: (name: string) => Promise<Page>;
   list: () => Promise<string[]>;
@@ -222,6 +237,15 @@ export interface DevBrowserClient {
    * Refs persist across Playwright connections.
    */
   selectSnapshotRef: (name: string, ref: string) => Promise<ElementHandle | null>;
+  /**
+   * Get server information including mode and extension connection status.
+   */
+  getServerInfo: () => Promise<ServerInfo>;
+  /**
+   * List unnamed tabs (extension mode only).
+   * These are tabs where the user clicked the extension icon but haven't been assigned names yet.
+   */
+  listUnnamed: () => Promise<UnnamedTab[]>;
 }
 
 export async function connect(serverUrl = "http://localhost:9222"): Promise<DevBrowserClient> {
@@ -398,6 +422,33 @@ export async function connect(serverUrl = "http://localhost:9222"): Promise<DevB
       }
 
       return element;
+    },
+
+    async getServerInfo(): Promise<ServerInfo> {
+      const res = await fetch(serverUrl);
+      if (!res.ok) {
+        throw new Error(`Server returned ${res.status}: ${await res.text()}`);
+      }
+      const info = (await res.json()) as {
+        wsEndpoint: string;
+        mode?: string;
+        extensionConnected?: boolean;
+      };
+      return {
+        wsEndpoint: info.wsEndpoint,
+        mode: (info.mode as "launch" | "extension") ?? "launch",
+        extensionConnected: info.extensionConnected,
+      };
+    },
+
+    async listUnnamed(): Promise<UnnamedTab[]> {
+      const res = await fetch(`${serverUrl}/tabs/unnamed`);
+      if (!res.ok) {
+        // Not in extension mode or endpoint not available
+        return [];
+      }
+      const data = (await res.json()) as { tabs?: UnnamedTab[] };
+      return data.tabs ?? [];
     },
   };
 }
