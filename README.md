@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/header.png" alt="Dev Browser - Browser automation for Claude Code" width="100%">
-</p>
-
 A browser automation plugin for [Claude Code](https://docs.anthropic.com/en/docs/claude-code) that lets Claude control your browser to test and verify your work as you develop.
 
 **Key features:**
@@ -14,57 +10,6 @@ A browser automation plugin for [Claude Code](https://docs.anthropic.com/en/docs
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) CLI installed
 - [Node.js](https://nodejs.org) (v18 or later) with npm
-
-## Installation
-
-### Claude Code
-
-```
-/plugin marketplace add sawyerhood/dev-browser
-/plugin install dev-browser@sawyerhood/dev-browser
-```
-
-Restart Claude Code after installation.
-
-### Amp / Codex
-
-Copy the skill to your skills directory:
-
-```bash
-# For Amp: ~/.claude/skills | For Codex: ~/.codex/skills
-SKILLS_DIR=~/.claude/skills  # or ~/.codex/skills
-
-mkdir -p $SKILLS_DIR
-git clone https://github.com/sawyerhood/dev-browser /tmp/dev-browser-skill
-cp -r /tmp/dev-browser-skill/skills/dev-browser $SKILLS_DIR/dev-browser
-rm -rf /tmp/dev-browser-skill
-```
-
-**Amp only:** Start the server manually before use:
-
-```bash
-cd ~/.claude/skills/dev-browser && npm install && npm run start-server
-```
-
-### Chrome Extension (Optional)
-
-The Chrome extension allows Dev Browser to control your existing Chrome browser instead of launching a separate Chromium instance. This gives you access to your logged-in sessions, bookmarks, and extensions.
-
-**Installation:**
-
-1. Download `extension.zip` from the [latest release](https://github.com/sawyerhood/dev-browser/releases/latest)
-2. Unzip the file to a permanent location (e.g., `~/.dev-browser-extension`)
-3. Open Chrome and go to `chrome://extensions`
-4. Enable "Developer mode" (toggle in top right)
-5. Click "Load unpacked" and select the unzipped extension folder
-
-**Using the extension:**
-
-1. Click the Dev Browser extension icon in Chrome's toolbar
-2. Toggle it to "Active" - this enables browser control
-3. Ask Claude to connect to your browser (e.g., "connect to my Chrome" or "use the extension")
-
-When active, Claude can control your existing Chrome tabs with all your logged-in sessions, cookies, and extensions intact.
 
 ## Permissions
 
